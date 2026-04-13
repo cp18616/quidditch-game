@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>魁地奇：手機競技版</title>
+    <style>
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            background-color: #1a1a2e; color: #f1c40f;
+            font-family: sans-serif; touch-action: none;
+        }
+        #game-ui {
+            position: absolute; top: 10px; width: 100%;
+            display: flex; justify-content: space-around;
+            pointer-events: none; font-size: 18px; z-index: 10;
+        }
+        canvas { display: block; background-color: #2e7d32; }
+        
+        /* 手機控制介面 */
+        .ctrl-overlay {
+            position: absolute; bottom: 30px; width: 100%;
+            display: flex; justify-content: space-between; padding: 0 40px;
+            box-sizing: border-box; pointer-events: none;
+        }
+        .joystick-base {
+            width: 120px; height: 120px; background: rgba(255,255,255,0.2);
+            border-radius: 50%; position: relative; pointer-events: auto;
+        }
+        .joystick-handle {
+            width: 50px; height: 50px; background: rgba(255,255,255,0.5);
+            border-radius: 50%; position: absolute; top: 35px; left: 35px;
+        }
+        .boost-btn {
+            width: 80px; height: 80px; background: #c0392b;
+            border-radius: 50%; color: white; display: flex;
+            align-items: center; justify-content: center;
+            font-weight: bold; pointer-events: auto; border: 4px solid #f1c40f;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-ui">
+        <div>分數: <span id="score">0</span></div>
+        <div id="status">抓捕金探子！</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="ctrl-overlay">
+        <div class="joystick-base" id="joyBase">
+            <div class="joystick-handle" id="joyHandle"></div>
+        </div>
+        <div class="boost-btn" id="boostBtn">BOOST</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        // 初始化畫布大小
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let score = 0;
+        let isStunned = false;
+        let stunTimer = 0;
+
+        const seeker = {
+            x: canvas.width / 2, y: canvas.height / 2,
+            radius: 15, color: '#c0392b',
+            baseSpeed: 5, boostSpeed: 10,
+            dx: 0, dy: 0, isBoosting: false
+        };
+
+        const snitch = { x: 100, y: 100, radius: 8, color: '#f1c40f', dx: 4, dy: 4 };
+
+        // 搖桿邏輯
+        const joyBase = document.getElementById('joyBase');
+        const joyHandle = document.getElementById('joyHandle');
+        let joyActive = false;
+        let joyX = 0, joyY = 0;
+
+        joyBase.addEventListener('touchstart', (e) => { joyActive = true; });
+        document.addEventListener('touchmove', (e) => {
+            if (!joyActive) return;
+            const touch = e.touches[0];
+            const rect = joyBase.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            let deltaX = touch.clientX - centerX;
+            let deltaY = touch.clientY - centerY;
+            const distance = Math.min(60, Math.hypot(deltaX, deltaY));
+            const angle = Math.atan2(deltaY, deltaX);
+
+            joyX = (Math.cos(angle) * distance) / 60;
+            joyY = (Math.sin(angle) * distance) / 60;
+
+            joyHandle.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
+            
+            seeker.dx = joyX;
+            seeker.dy = joyY;
+        });
+        document.addEventListener('touchend', () => {
+            joyActive = false;
+            joyHandle.style.transform = `translate(0,0)`;
+            seeker.dx = 0; seeker.dy = 0;
+        });
+
+        // 加速按鈕
+        const boostBtn = document.getElementById('boostBtn');
+        boostBtn.addEventListener('touchstart', () => { seeker.isBoosting = true; });
+        boostBtn.addEventListener('touchend', () => { seeker.isBoosting = false; });
+
+        function update() {
+            if (isStunned) {
+                if (--stunTimer <= 0) isStunned = false;
+                return;
+            }
+
+            const speed = seeker.isBoosting ? seeker.boostSpeed : seeker.baseSpeed;
+            seeker.x += seeker.dx * speed;
+            seeker.y += seeker.dy * speed;
+
+            // 邊界檢查
+            seeker.x = Math.max(seeker.radius, Math.min(canvas.width - seeker.radius, seeker.x));
+            seeker.y = Math.max(seeker.radius, Math.min(canvas.height - seeker.radius, seeker.y));
+
+            // 金探子移動
+            snitch.x += snitch.dx; snitch.y += snitch.dy;
+            if (snitch.x < 0 || snitch.x > canvas.width) snitch.dx *= -1;
+            if (snitch.y < 0 || snitch.y > canvas.height) snitch.dy *= -1;
+
+            // 碰撞
+            if (Math.hypot(seeker.x - snitch.x, seeker.y - snitch.y) < seeker.radius + snitch.radius) {
+                score += 150;
+                document.getElementById('score').innerText = score;
+                snitch.x = Math.random() * canvas.width;
+                snitch.y = Math.random() * canvas.height;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 繪製搜捕手
+            ctx.beginPath();
+            ctx.arc(seeker.x, seeker.y, seeker.radius, 0, Math.PI*2);
+            ctx.fillStyle = seeker.color;
+            ctx.fill();
+            // 繪製金探子
+            ctx.beginPath();
+            ctx.arc(snitch.x, snitch.y, snitch.radius, 0, Math.PI*2);
+            ctx.fillStyle = snitch.color;
+            ctx.fill();
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+</html>
