@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>魁地奇：榮耀之戰</title>
+    <title>魁地奇：手機直式對決</title>
     <style>
         body {
             margin: 0; padding: 0; overflow: hidden;
             background-color: #1a1a2e; color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none;
+            touch-action: none; /* 禁用瀏覽器預設滑動，防止畫面亂跳 */
         }
         
-        /* 遊戲介面 */
+        /* 遊戲介面 (頂部) */
         #game-ui {
             position: absolute; top: 15px; width: 100%;
             display: none; flex-direction: column; align-items: center;
             pointer-events: none; z-index: 10;
         }
         .stats-row {
-            display: flex; justify-content: space-between; width: 90%;
-            font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: flex; justify-content: space-between; width: 85%;
+            font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
         .time { color: #e74c3c; }
         .score { color: #f1c40f; }
         
         #energy-container {
-            width: 80%; height: 10px; background: rgba(0,0,0,0.5);
-            border-radius: 5px; margin-top: 10px; border: 2px solid #34495e; overflow: hidden;
+            width: 85%; height: 8px; background: rgba(0,0,0,0.5);
+            border-radius: 4px; margin-top: 10px; border: 2px solid #34495e; overflow: hidden;
         }
         #energy-bar {
             width: 100%; height: 100%; background: #3498db; transition: width 0.1s linear;
@@ -35,41 +35,42 @@
 
         canvas { display: block; background-color: #2e7d32; }
         
-        /* 搖桿與按鈕 */
+        /* 搖桿與按鈕 (底部絕對定位，專為直式設計) */
         .ctrl-overlay {
-            position: absolute; bottom: 40px; width: 100%;
-            display: none; justify-content: space-between; padding: 0 40px;
-            box-sizing: border-box; pointer-events: none; z-index: 10;
+            position: absolute; bottom: 0; width: 100%; height: 160px;
+            display: none; pointer-events: none; z-index: 10;
         }
         .joystick-base {
-            width: 130px; height: 130px; background: rgba(255,255,255,0.15);
-            border-radius: 50%; position: relative; pointer-events: auto;
+            position: absolute; bottom: 30px; left: 20px;
+            width: 110px; height: 110px; background: rgba(255,255,255,0.15);
+            border-radius: 50%; pointer-events: auto;
             border: 2px solid rgba(255,255,255,0.3);
         }
         .joystick-handle {
-            width: 50px; height: 50px; background: rgba(255,255,255,0.7);
-            border-radius: 50%; position: absolute; top: 40px; left: 40px;
+            width: 46px; height: 46px; background: rgba(255,255,255,0.7);
+            border-radius: 50%; position: absolute; top: 32px; left: 32px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
         .boost-btn {
-            width: 90px; height: 90px; background: linear-gradient(135deg, #e74c3c, #c0392b);
+            position: absolute; bottom: 40px; right: 20px;
+            width: 85px; height: 85px; background: linear-gradient(135deg, #e74c3c, #c0392b);
             border-radius: 50%; color: white; display: flex;
-            align-items: center; justify-content: center; font-size: 18px;
+            align-items: center; justify-content: center; font-size: 16px;
             font-weight: bold; pointer-events: auto; border: 4px solid #f1c40f;
             user-select: none; -webkit-tap-highlight-color: transparent;
             box-shadow: 0 6px 15px rgba(0,0,0,0.5);
         }
         .boost-btn:active { transform: scale(0.95); background: #c0392b; }
 
-        /* 彈出視窗 (開始/結束) */
+        /* 彈出視窗 (手機版優化比例) */
         .modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 20; text-align: center;
         }
-        .modal h1 { color: #f1c40f; font-size: 36px; margin-bottom: 20px; }
+        .modal h1 { color: #f1c40f; font-size: 32px; margin-bottom: 20px; }
         .house-btn {
-            width: 200px; padding: 15px; margin: 10px; font-size: 20px; font-weight: bold;
+            width: 70%; max-width: 250px; padding: 12px; margin: 8px; font-size: 18px; font-weight: bold;
             color: white; border: 2px solid #fff; border-radius: 10px; cursor: pointer;
         }
         .gryffindor { background: #c0392b; }
@@ -78,7 +79,7 @@
         .hufflepuff { background: #f39c12; color: #000; border-color: #000; }
         
         .restart-btn {
-            padding: 15px 40px; font-size: 20px; font-weight: bold; margin-top: 20px;
+            padding: 12px 30px; font-size: 18px; font-weight: bold; margin-top: 20px;
             background: #f1c40f; color: #000; border: none; border-radius: 30px; pointer-events: auto;
         }
     </style>
@@ -103,7 +104,7 @@
 
     <div id="game-over" class="modal" style="display: none;">
         <h1>比賽結束！</h1>
-        <p style="font-size: 24px;">最終得分: <span id="final-score">0</span></p>
+        <p style="font-size: 22px;">最終得分: <span id="final-score">0</span></p>
         <button class="restart-btn" onclick="showStartScreen()">重新選擇學院</button>
     </div>
 
@@ -118,6 +119,7 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         
+        // 確保畫布永遠填滿目前的視窗大小 (包含旋轉或改變大小)
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -125,7 +127,7 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // 🔊 音效合成器 (Web Audio API)
+        // 🔊 簡化版 Web Audio (相容手機)
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
 
@@ -133,62 +135,59 @@
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
+            osc.connect(gainNode); gainNode.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
             
             if (type === 'catch') {
-                // 抓到金探子：高頻叮噹聲
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(800, now);
                 osc.frequency.exponentialRampToValueAtTime(1600, now + 0.1);
-                gainNode.gain.setValueAtTime(0.3, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now);
-                osc.stop(now + 0.1);
+                gainNode.gain.setValueAtTime(0.3, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
             } else if (type === 'hit') {
-                // 被搏格撞到：低頻沉悶的嗡嗡聲
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(150, now);
                 osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
-                gainNode.gain.setValueAtTime(0.4, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(now);
-                osc.stop(now + 0.2);
+                gainNode.gain.setValueAtTime(0.4, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
             } else if (type === 'over') {
-                // 遊戲結束：下降的音調
                 osc.type = 'square';
                 osc.frequency.setValueAtTime(400, now);
                 osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
-                gainNode.gain.setValueAtTime(0.2, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                osc.start(now);
-                osc.stop(now + 0.5);
+                gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
             }
         }
 
         let gameState = 'start'; 
         let score = 0, timeLeft = 60, timerInterval;
-        let seekerColor = '#c0392b'; // 預設顏色
+        let seekerColor = '#c0392b';
         let seeker, snitch, bludgers;
 
+        // 核心優化：所有物件使用相對座標 (百分比) 生成
         function initGameObjects() {
+            let w = canvas.width;
+            let h = canvas.height;
+
             seeker = {
-                x: canvas.width / 2, y: canvas.height / 2,
-                radius: 16, color: seekerColor,
-                baseSpeed: 4.5, boostSpeed: 9.5,
+                x: w * 0.5, y: h * 0.75, // 搜捕手出生在下方半場
+                radius: 14, color: seekerColor,
+                baseSpeed: 4, boostSpeed: 8.5,
                 dx: 0, dy: 0, isBoosting: false,
                 energy: 100, isStunned: false, stunTimer: 0
             };
-            snitch = { x: 100, y: 100, radius: 7, color: '#f1c40f', dx: 5, dy: 5, changeDirTimer: 0 };
+            
+            snitch = { 
+                x: w * 0.5, y: h * 0.25, // 金探子出生在上方半場
+                radius: 6, color: '#f1c40f', dx: 4, dy: 4, changeDirTimer: 0 
+            };
+            
             bludgers = [
-                { x: canvas.width-50, y: 50, radius: 12, color: '#2c3e50', dx: -5, dy: 5 },
-                { x: 50, y: canvas.height-50, radius: 12, color: '#2c3e50', dx: 5, dy: -5 }
+                { x: w * 0.8, y: h * 0.2, radius: 11, color: '#2c3e50', dx: -4, dy: 5 }, // 右上角
+                { x: w * 0.2, y: h * 0.8, radius: 11, color: '#2c3e50', dx: 4, dy: -5 }  // 左下角
             ];
         }
 
-        // --- 介面流程控制 ---
         function showStartScreen() {
             document.getElementById('game-over').style.display = 'none';
             document.getElementById('start-screen').style.display = 'flex';
@@ -197,10 +196,8 @@
         }
 
         function selectHouse(color) {
-            // 初始化音效 (必須由使用者互動觸發)
             if (!audioCtx) audioCtx = new AudioContext();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            
             seekerColor = color;
             document.getElementById('start-screen').style.display = 'none';
             startGame();
@@ -239,40 +236,43 @@
             document.getElementById('final-score').innerText = score;
         }
 
-        // --- 控制器邏輯 ---
+        // 搖桿邏輯
         const joyBase = document.getElementById('joyBase');
         const joyHandle = document.getElementById('joyHandle');
         let joyActive = false;
 
-        joyBase.addEventListener('touchstart', () => { joyActive = true; });
+        joyBase.addEventListener('touchstart', (e) => { e.preventDefault(); joyActive = true; });
         document.addEventListener('touchmove', (e) => {
             if (!joyActive || gameState !== 'playing') return;
+            e.preventDefault(); // 防止滾動
             const touch = e.touches[0];
             const rect = joyBase.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
             
             let deltaX = touch.clientX - centerX, deltaY = touch.clientY - centerY;
-            const distance = Math.min(65, Math.hypot(deltaX, deltaY));
+            const distance = Math.min(55, Math.hypot(deltaX, deltaY)); // 配合縮小後的搖桿微調
             const angle = Math.atan2(deltaY, deltaX);
 
             joyHandle.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
-            seeker.dx = (Math.cos(angle) * distance) / 65;
-            seeker.dy = (Math.sin(angle) * distance) / 65;
-        });
+            seeker.dx = (Math.cos(angle) * distance) / 55;
+            seeker.dy = (Math.sin(angle) * distance) / 55;
+        }, { passive: false });
+        
         document.addEventListener('touchend', () => {
             joyActive = false;
             joyHandle.style.transform = `translate(0,0)`;
             if (seeker) { seeker.dx = 0; seeker.dy = 0; }
         });
 
-        document.getElementById('boostBtn').addEventListener('touchstart', (e) => { e.preventDefault(); if(seeker) seeker.isBoosting = true; });
-        document.getElementById('boostBtn').addEventListener('touchend', (e) => { e.preventDefault(); if(seeker) seeker.isBoosting = false; });
+        const boostBtn = document.getElementById('boostBtn');
+        boostBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(seeker) seeker.isBoosting = true; });
+        boostBtn.addEventListener('touchend', (e) => { e.preventDefault(); if(seeker) seeker.isBoosting = false; });
 
-        // --- 遊戲運算核心 ---
         function update() {
             if (gameState !== 'playing') return;
 
+            // 體力與速度
             if (seeker.isStunned) {
                 if (--seeker.stunTimer <= 0) seeker.isStunned = false;
             } else {
@@ -284,87 +284,99 @@
                     seeker.energy = Math.min(100, seeker.energy + 0.5);
                 }
                 document.getElementById('energy-bar').style.width = seeker.energy + '%';
-
                 seeker.x += seeker.dx * speed; seeker.y += seeker.dy * speed;
             }
 
+            // 搜捕手邊界 (防超出版面)
             seeker.x = Math.max(seeker.radius, Math.min(canvas.width - seeker.radius, seeker.x));
             seeker.y = Math.max(seeker.radius, Math.min(canvas.height - seeker.radius, seeker.y));
 
             // 金探子 AI
             let distToSeeker = Math.hypot(seeker.x - snitch.x, seeker.y - snitch.y);
-            if (distToSeeker < 180 && !seeker.isStunned) {
+            if (distToSeeker < 150 && !seeker.isStunned) {
                 let angleAway = Math.atan2(snitch.y - seeker.y, snitch.x - seeker.x);
-                snitch.dx = Math.cos(angleAway) * 7.5; snitch.dy = Math.sin(angleAway) * 7.5;
+                snitch.dx = Math.cos(angleAway) * 6.5; snitch.dy = Math.sin(angleAway) * 6.5;
             } else {
                 if (++snitch.changeDirTimer > 40) {
                     snitch.dx += (Math.random() - 0.5) * 8; snitch.dy += (Math.random() - 0.5) * 8;
                     snitch.changeDirTimer = 0;
                 }
-                snitch.dx = Math.max(-6, Math.min(6, snitch.dx)); snitch.dy = Math.max(-6, Math.min(6, snitch.dy));
+                snitch.dx = Math.max(-5, Math.min(5, snitch.dx)); snitch.dy = Math.max(-5, Math.min(5, snitch.dy));
             }
 
+            // 金探子邊界 (防超出版面)
             snitch.x += snitch.dx; snitch.y += snitch.dy;
             if (snitch.x < snitch.radius || snitch.x > canvas.width - snitch.radius) snitch.dx *= -1;
             if (snitch.y < snitch.radius || snitch.y > canvas.height - snitch.radius) snitch.dy *= -1;
 
-            // 搏格碰撞判定
+            // 搏格碰撞與邊界
             bludgers.forEach(b => {
                 b.x += b.dx; b.y += b.dy;
                 if (b.x < b.radius || b.x > canvas.width - b.radius) b.dx *= -1;
                 if (b.y < b.radius || b.y > canvas.height - b.radius) b.dy *= -1;
                 
                 if (!seeker.isStunned && Math.hypot(seeker.x - b.x, seeker.y - b.y) < seeker.radius + b.radius) {
-                    playSound('hit'); // 播放受擊音效
+                    playSound('hit');
                     seeker.isStunned = true;
                     seeker.stunTimer = 60; 
                     seeker.x -= Math.sign(b.dx) * 20; seeker.y -= Math.sign(b.dy) * 20;
                 }
             });
 
-            // 抓到金探子判定
+            // 抓到金探子
             if (!seeker.isStunned && distToSeeker < seeker.radius + snitch.radius) {
-                playSound('catch'); // 播放得分音效
+                playSound('catch');
                 score += 150;
                 document.getElementById('score').innerText = score;
-                snitch.x = Math.random() > 0.5 ? 50 : canvas.width - 50;
-                snitch.y = Math.random() > 0.5 ? 50 : canvas.height - 50;
+                // 在畫面內隨機生成新位置
+                snitch.x = Math.random() * (canvas.width - 40) + 20;
+                snitch.y = Math.random() * (canvas.height - 150) + 50; 
                 
                 bludgers.forEach(b => {
-                    b.dx = Math.sign(b.dx) * (Math.abs(b.dx) + 0.5);
-                    b.dy = Math.sign(b.dy) * (Math.abs(b.dy) + 0.5);
+                    b.dx = Math.sign(b.dx) * (Math.abs(b.dx) + 0.4);
+                    b.dy = Math.sign(b.dy) * (Math.abs(b.dy) + 0.4);
                 });
             }
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (gameState !== 'playing') return; // 只在遊戲中繪製球場
+            if (gameState !== 'playing') return;
             
-            ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, 60, 0, Math.PI*2); ctx.stroke();
+            // 繪製直向球場底線
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2;
+            ctx.beginPath(); // 中場橫線
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            ctx.beginPath(); // 中圈
+            ctx.arc(canvas.width/2, canvas.height/2, 50, 0, Math.PI*2); 
+            ctx.stroke();
 
+            // 繪製金探子
             ctx.beginPath(); ctx.arc(snitch.x, snitch.y, snitch.radius, 0, Math.PI*2);
             ctx.fillStyle = snitch.color;
             ctx.shadowBlur = 15; ctx.shadowColor = '#f1c40f'; ctx.fill(); ctx.shadowBlur = 0;
 
+            // 繪製搏格
             bludgers.forEach(b => {
                 ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
                 ctx.fillStyle = b.color; ctx.fill();
             });
 
+            // 繪製搜捕手
             ctx.beginPath(); ctx.arc(seeker.x, seeker.y, seeker.radius, 0, Math.PI*2);
             ctx.fillStyle = seeker.isStunned ? '#95a5a6' : seeker.color; ctx.fill();
             ctx.lineWidth = 3; ctx.strokeStyle = '#f1c40f'; ctx.stroke();
 
             if (seeker.isStunned) {
-                ctx.fillStyle = 'white'; ctx.font = '20px Arial';
-                ctx.fillText('😵', seeker.x - 12, seeker.y - 20);
+                ctx.fillStyle = 'white'; ctx.font = '16px Arial';
+                ctx.fillText('😵', seeker.x - 10, seeker.y - 18);
             }
         }
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
-        loop(); // 啟動主迴圈
+        loop();
     </script>
 </body>
 </html>
