@@ -1,382 +1,270 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>魁地奇：手機直式對決</title>
-    <style>
-        body {
-            margin: 0; padding: 0; overflow: hidden;
-            background-color: #1a1a2e; color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none; /* 禁用瀏覽器預設滑動，防止畫面亂跳 */
-        }
-        
-        /* 遊戲介面 (頂部) */
-        #game-ui {
-            position: absolute; top: 15px; width: 100%;
-            display: none; flex-direction: column; align-items: center;
-            pointer-events: none; z-index: 10;
-        }
-        .stats-row {
-            display: flex; justify-content: space-between; width: 85%;
-            font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-        }
-        .time { color: #e74c3c; }
-        .score { color: #f1c40f; }
-        
-        #energy-container {
-            width: 85%; height: 8px; background: rgba(0,0,0,0.5);
-            border-radius: 4px; margin-top: 10px; border: 2px solid #34495e; overflow: hidden;
-        }
-        #energy-bar {
-            width: 100%; height: 100%; background: #3498db; transition: width 0.1s linear;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>魁地奇：進化版</title>
 
-        canvas { display: block; background-color: #2e7d32; }
-        
-        /* 搖桿與按鈕 (底部絕對定位，專為直式設計) */
-        .ctrl-overlay {
-            position: absolute; bottom: 0; width: 100%; height: 160px;
-            display: none; pointer-events: none; z-index: 10;
-        }
-        .joystick-base {
-            position: absolute; bottom: 30px; left: 20px;
-            width: 110px; height: 110px; background: rgba(255,255,255,0.15);
-            border-radius: 50%; pointer-events: auto;
-            border: 2px solid rgba(255,255,255,0.3);
-        }
-        .joystick-handle {
-            width: 46px; height: 46px; background: rgba(255,255,255,0.7);
-            border-radius: 50%; position: absolute; top: 32px; left: 32px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        .boost-btn {
-            position: absolute; bottom: 40px; right: 20px;
-            width: 85px; height: 85px; background: linear-gradient(135deg, #e74c3c, #c0392b);
-            border-radius: 50%; color: white; display: flex;
-            align-items: center; justify-content: center; font-size: 16px;
-            font-weight: bold; pointer-events: auto; border: 4px solid #f1c40f;
-            user-select: none; -webkit-tap-highlight-color: transparent;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
-        }
-        .boost-btn:active { transform: scale(0.95); background: #c0392b; }
+<style>
+body {
+    margin: 0; overflow: hidden;
+    background: #111;
+    touch-action: none;
+    font-family: sans-serif;
+}
 
-        /* 彈出視窗 (手機版優化比例) */
-        .modal {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 20; text-align: center;
-        }
-        .modal h1 { color: #f1c40f; font-size: 32px; margin-bottom: 20px; }
-        .house-btn {
-            width: 70%; max-width: 250px; padding: 12px; margin: 8px; font-size: 18px; font-weight: bold;
-            color: white; border: 2px solid #fff; border-radius: 10px; cursor: pointer;
-        }
-        .gryffindor { background: #c0392b; }
-        .slytherin { background: #27ae60; }
-        .ravenclaw { background: #2980b9; }
-        .hufflepuff { background: #f39c12; color: #000; border-color: #000; }
-        
-        .restart-btn {
-            padding: 12px 30px; font-size: 18px; font-weight: bold; margin-top: 20px;
-            background: #f1c40f; color: #000; border: none; border-radius: 30px; pointer-events: auto;
-        }
-    </style>
+/* UI */
+#game-ui {
+    position: absolute;
+    top: 10px;
+    width: 100%;
+    text-align: center;
+    color: white;
+    font-size: 18px;
+}
+
+#energy {
+    height: 6px;
+    background: #3498db;
+    margin: 6px auto;
+    width: 80%;
+}
+
+/* 控制 */
+.ctrl {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 160px;
+}
+
+#joyBase {
+    position: absolute;
+    left: 20px;
+    bottom: 20px;
+    width: 100px;
+    height: 100px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+}
+
+#joyHandle {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 30px;
+    left: 30px;
+}
+
+#boost {
+    position: absolute;
+    right: 20px;
+    bottom: 30px;
+    width: 80px;
+    height: 80px;
+    background: red;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
 </head>
+
 <body>
 
-    <div id="start-screen" class="modal">
-        <h1>選擇你的學院</h1>
-        <button class="house-btn gryffindor" onclick="selectHouse('#c0392b')">葛來分多</button>
-        <button class="house-btn slytherin" onclick="selectHouse('#27ae60')">史萊哲林</button>
-        <button class="house-btn ravenclaw" onclick="selectHouse('#2980b9')">雷文克勞</button>
-        <button class="house-btn hufflepuff" onclick="selectHouse('#f39c12')">赫夫帕夫</button>
-    </div>
+<div id="game-ui">
+    ⏳ <span id="time">60</span> | 🏆 <span id="score">0</span>
+    <div id="energy"></div>
+</div>
 
-    <div id="game-ui">
-        <div class="stats-row">
-            <div class="time">⏳ <span id="timer">60</span>s</div>
-            <div class="score">🏆 <span id="score">0</span></div>
-        </div>
-        <div id="energy-container"><div id="energy-bar"></div></div>
-    </div>
+<canvas id="c"></canvas>
 
-    <div id="game-over" class="modal" style="display: none;">
-        <h1>比賽結束！</h1>
-        <p style="font-size: 22px;">最終得分: <span id="final-score">0</span></p>
-        <button class="restart-btn" onclick="showStartScreen()">重新選擇學院</button>
-    </div>
+<div class="ctrl">
+    <div id="joyBase"><div id="joyHandle"></div></div>
+    <div id="boost">BOOST</div>
+</div>
 
-    <canvas id="gameCanvas"></canvas>
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
 
-    <div class="ctrl-overlay" id="ctrl-overlay">
-        <div class="joystick-base" id="joyBase"><div class="joystick-handle" id="joyHandle"></div></div>
-        <div class="boost-btn" id="boostBtn">衝刺!</div>
-    </div>
+function resize(){
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+}
+resize();
+addEventListener("resize", resize);
 
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        
-        // 確保畫布永遠填滿目前的視窗大小 (包含旋轉或改變大小)
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+/* ===== 遊戲狀態 ===== */
+let score = 0;
+let timeLeft = 60;
+
+let seeker = {
+    x: 200, y: 400,
+    dx:0, dy:0,
+    vx:0, vy:0,
+    energy:100,
+    boosting:false,
+    radius:12
+};
+
+let snitch = {x:150,y:200,dx:4,dy:4,r:6};
+let bludgers = [
+    {x:300,y:200,dx:4,dy:5,r:10},
+    {x:100,y:500,dx:-4,dy:-5,r:10}
+];
+
+/* ===== 搖桿 ===== */
+let joyActive=false;
+
+joyBase.ontouchstart=()=>joyActive=true;
+ontouchend=()=>{joyActive=false; seeker.dx=seeker.dy=0;};
+
+ontouchmove=e=>{
+    if(!joyActive)return;
+    const t=e.touches[0];
+    const r=joyBase.getBoundingClientRect();
+    let dx=t.clientX-(r.left+r.width/2);
+    let dy=t.clientY-(r.top+r.height/2);
+
+    const dist=Math.min(50,Math.hypot(dx,dy));
+    const angle=Math.atan2(dy,dx);
+
+    joyHandle.style.transform=
+        `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px)`;
+
+    seeker.dx=Math.cos(angle);
+    seeker.dy=Math.sin(angle);
+};
+
+/* ===== Boost ===== */
+boost.ontouchstart=()=>seeker.boosting=true;
+boost.ontouchend=()=>seeker.boosting=false;
+
+/* ===== 主迴圈 ===== */
+let last=0;
+function loop(t){
+    const delta=(t-last)/16.67;
+    last=t;
+
+    update(delta);
+    draw();
+
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===== 更新 ===== */
+function update(d){
+
+    timeLeft-=0.016*d;
+    if(timeLeft<=0)return;
+
+    document.getElementById("time").innerText=Math.floor(timeLeft);
+
+    let speed=4;
+    if(seeker.boosting && seeker.energy>0){
+        speed=8;
+        seeker.energy-=2*d;
+    }else{
+        seeker.energy=Math.min(100,seeker.energy+0.5*d);
+    }
+
+    energy.style.width=seeker.energy+"%";
+
+    /* 慣性 */
+    seeker.vx += (seeker.dx*speed - seeker.vx)*0.2;
+    seeker.vy += (seeker.dy*speed - seeker.vy)*0.2;
+
+    seeker.x += seeker.vx*d;
+    seeker.y += seeker.vy*d;
+
+    /* 邊界 */
+    seeker.x=Math.max(0,Math.min(canvas.width,seeker.x));
+    seeker.y=Math.max(0,Math.min(canvas.height,seeker.y));
+
+    /* 難度成長 */
+    let diff=1+(60-timeLeft)/30;
+
+    /* 金探子AI */
+    let dist=Math.hypot(seeker.x-snitch.x,seeker.y-snitch.y);
+
+    if(dist<150){
+        let ang=Math.atan2(snitch.y-seeker.y,snitch.x-seeker.x);
+        ang+=(Math.random()-0.5)*0.5;
+        snitch.dx=Math.cos(ang)*6*diff;
+        snitch.dy=Math.sin(ang)*6*diff;
+    }
+
+    snitch.x+=snitch.dx*d;
+    snitch.y+=snitch.dy*d;
+
+    /* 撞牆 */
+    if(snitch.x<0||snitch.x>canvas.width)snitch.dx*=-1;
+    if(snitch.y<0||snitch.y>canvas.height)snitch.dy*=-1;
+
+    /* 搏格 */
+    bludgers.forEach(b=>{
+        b.x+=b.dx*d;
+        b.y+=b.dy*d;
+
+        if(b.x<0||b.x>canvas.width)b.dx*=-1;
+        if(b.y<0||b.y>canvas.height)b.dy*=-1;
+
+        if(Math.hypot(seeker.x-b.x,seeker.y-b.y)<20){
+            if(navigator.vibrate)navigator.vibrate(100);
+            seeker.vx*=-2;
+            seeker.vy*=-2;
         }
-        window.addEventListener('resize', resize);
-        resize();
+    });
 
-        // 🔊 簡化版 Web Audio (相容手機)
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        let audioCtx;
+    /* 抓到 */
+    if(dist<20){
+        score+=150;
+        document.getElementById("score").innerText=score;
 
-        function playSound(type) {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            osc.connect(gainNode); gainNode.connect(audioCtx.destination);
-            const now = audioCtx.currentTime;
-            
-            if (type === 'catch') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, now);
-                osc.frequency.exponentialRampToValueAtTime(1600, now + 0.1);
-                gainNode.gain.setValueAtTime(0.3, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now); osc.stop(now + 0.1);
-            } else if (type === 'hit') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
-                gainNode.gain.setValueAtTime(0.4, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(now); osc.stop(now + 0.2);
-            } else if (type === 'over') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(400, now);
-                osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
-                gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                osc.start(now); osc.stop(now + 0.5);
-            }
-        }
+        snitch.x=Math.random()*canvas.width;
+        snitch.y=Math.random()*canvas.height;
+    }
+}
 
-        let gameState = 'start'; 
-        let score = 0, timeLeft = 60, timerInterval;
-        let seekerColor = '#c0392b';
-        let seeker, snitch, bludgers;
+/* ===== 繪圖 ===== */
+function draw(){
 
-        // 核心優化：所有物件使用相對座標 (百分比) 生成
-        function initGameObjects() {
-            let w = canvas.width;
-            let h = canvas.height;
+    /* 漸層背景 */
+    let g=ctx.createLinearGradient(0,0,0,canvas.height);
+    g.addColorStop(0,"#1e8449");
+    g.addColorStop(1,"#145a32");
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-            seeker = {
-                x: w * 0.5, y: h * 0.75, // 搜捕手出生在下方半場
-                radius: 14, color: seekerColor,
-                baseSpeed: 4, boostSpeed: 8.5,
-                dx: 0, dy: 0, isBoosting: false,
-                energy: 100, isStunned: false, stunTimer: 0
-            };
-            
-            snitch = { 
-                x: w * 0.5, y: h * 0.25, // 金探子出生在上方半場
-                radius: 6, color: '#f1c40f', dx: 4, dy: 4, changeDirTimer: 0 
-            };
-            
-            bludgers = [
-                { x: w * 0.8, y: h * 0.2, radius: 11, color: '#2c3e50', dx: -4, dy: 5 }, // 右上角
-                { x: w * 0.2, y: h * 0.8, radius: 11, color: '#2c3e50', dx: 4, dy: -5 }  // 左下角
-            ];
-        }
+    /* 金探子 */
+    ctx.globalAlpha=0.7+Math.sin(Date.now()*0.01)*0.3;
+    ctx.beginPath();
+    ctx.arc(snitch.x,snitch.y,snitch.r,0,Math.PI*2);
+    ctx.fillStyle="gold";
+    ctx.fill();
+    ctx.globalAlpha=1;
 
-        function showStartScreen() {
-            document.getElementById('game-over').style.display = 'none';
-            document.getElementById('start-screen').style.display = 'flex';
-            document.getElementById('game-ui').style.display = 'none';
-            document.getElementById('ctrl-overlay').style.display = 'none';
-        }
+    /* 搏格 */
+    bludgers.forEach(b=>{
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+        ctx.fillStyle="black";
+        ctx.fill();
+    });
 
-        function selectHouse(color) {
-            if (!audioCtx) audioCtx = new AudioContext();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            seekerColor = color;
-            document.getElementById('start-screen').style.display = 'none';
-            startGame();
-        }
+    /* 玩家 */
+    ctx.beginPath();
+    ctx.arc(seeker.x,seeker.y,seeker.radius,0,Math.PI*2);
+    ctx.fillStyle="red";
+    ctx.fill();
+}
+</script>
 
-        function startGame() {
-            gameState = 'playing';
-            score = 0; timeLeft = 60;
-            document.getElementById('score').innerText = score;
-            document.getElementById('timer').innerText = timeLeft;
-            document.querySelector('.time').style.color = '#e74c3c';
-            
-            document.getElementById('game-ui').style.display = 'flex';
-            document.getElementById('ctrl-overlay').style.display = 'flex';
-            
-            initGameObjects();
-            
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                if (gameState === 'playing' && timeLeft > 0) {
-                    timeLeft--;
-                    document.getElementById('timer').innerText = timeLeft;
-                    if (timeLeft <= 10) document.querySelector('.time').style.color = 'red';
-                } else if (timeLeft <= 0) {
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        function endGame() {
-            gameState = 'over';
-            playSound('over');
-            document.getElementById('game-ui').style.display = 'none';
-            document.getElementById('ctrl-overlay').style.display = 'none';
-            document.getElementById('game-over').style.display = 'flex';
-            document.getElementById('final-score').innerText = score;
-        }
-
-        // 搖桿邏輯
-        const joyBase = document.getElementById('joyBase');
-        const joyHandle = document.getElementById('joyHandle');
-        let joyActive = false;
-
-        joyBase.addEventListener('touchstart', (e) => { e.preventDefault(); joyActive = true; });
-        document.addEventListener('touchmove', (e) => {
-            if (!joyActive || gameState !== 'playing') return;
-            e.preventDefault(); // 防止滾動
-            const touch = e.touches[0];
-            const rect = joyBase.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            
-            let deltaX = touch.clientX - centerX, deltaY = touch.clientY - centerY;
-            const distance = Math.min(55, Math.hypot(deltaX, deltaY)); // 配合縮小後的搖桿微調
-            const angle = Math.atan2(deltaY, deltaX);
-
-            joyHandle.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
-            seeker.dx = (Math.cos(angle) * distance) / 55;
-            seeker.dy = (Math.sin(angle) * distance) / 55;
-        }, { passive: false });
-        
-        document.addEventListener('touchend', () => {
-            joyActive = false;
-            joyHandle.style.transform = `translate(0,0)`;
-            if (seeker) { seeker.dx = 0; seeker.dy = 0; }
-        });
-
-        const boostBtn = document.getElementById('boostBtn');
-        boostBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(seeker) seeker.isBoosting = true; });
-        boostBtn.addEventListener('touchend', (e) => { e.preventDefault(); if(seeker) seeker.isBoosting = false; });
-
-        function update() {
-            if (gameState !== 'playing') return;
-
-            // 體力與速度
-            if (seeker.isStunned) {
-                if (--seeker.stunTimer <= 0) seeker.isStunned = false;
-            } else {
-                let speed = seeker.baseSpeed;
-                if (seeker.isBoosting && seeker.energy > 0) {
-                    speed = seeker.boostSpeed;
-                    seeker.energy -= 1.5;
-                } else {
-                    seeker.energy = Math.min(100, seeker.energy + 0.5);
-                }
-                document.getElementById('energy-bar').style.width = seeker.energy + '%';
-                seeker.x += seeker.dx * speed; seeker.y += seeker.dy * speed;
-            }
-
-            // 搜捕手邊界 (防超出版面)
-            seeker.x = Math.max(seeker.radius, Math.min(canvas.width - seeker.radius, seeker.x));
-            seeker.y = Math.max(seeker.radius, Math.min(canvas.height - seeker.radius, seeker.y));
-
-            // 金探子 AI
-            let distToSeeker = Math.hypot(seeker.x - snitch.x, seeker.y - snitch.y);
-            if (distToSeeker < 150 && !seeker.isStunned) {
-                let angleAway = Math.atan2(snitch.y - seeker.y, snitch.x - seeker.x);
-                snitch.dx = Math.cos(angleAway) * 6.5; snitch.dy = Math.sin(angleAway) * 6.5;
-            } else {
-                if (++snitch.changeDirTimer > 40) {
-                    snitch.dx += (Math.random() - 0.5) * 8; snitch.dy += (Math.random() - 0.5) * 8;
-                    snitch.changeDirTimer = 0;
-                }
-                snitch.dx = Math.max(-5, Math.min(5, snitch.dx)); snitch.dy = Math.max(-5, Math.min(5, snitch.dy));
-            }
-
-            // 金探子邊界 (防超出版面)
-            snitch.x += snitch.dx; snitch.y += snitch.dy;
-            if (snitch.x < snitch.radius || snitch.x > canvas.width - snitch.radius) snitch.dx *= -1;
-            if (snitch.y < snitch.radius || snitch.y > canvas.height - snitch.radius) snitch.dy *= -1;
-
-            // 搏格碰撞與邊界
-            bludgers.forEach(b => {
-                b.x += b.dx; b.y += b.dy;
-                if (b.x < b.radius || b.x > canvas.width - b.radius) b.dx *= -1;
-                if (b.y < b.radius || b.y > canvas.height - b.radius) b.dy *= -1;
-                
-                if (!seeker.isStunned && Math.hypot(seeker.x - b.x, seeker.y - b.y) < seeker.radius + b.radius) {
-                    playSound('hit');
-                    seeker.isStunned = true;
-                    seeker.stunTimer = 60; 
-                    seeker.x -= Math.sign(b.dx) * 20; seeker.y -= Math.sign(b.dy) * 20;
-                }
-            });
-
-            // 抓到金探子
-            if (!seeker.isStunned && distToSeeker < seeker.radius + snitch.radius) {
-                playSound('catch');
-                score += 150;
-                document.getElementById('score').innerText = score;
-                // 在畫面內隨機生成新位置
-                snitch.x = Math.random() * (canvas.width - 40) + 20;
-                snitch.y = Math.random() * (canvas.height - 150) + 50; 
-                
-                bludgers.forEach(b => {
-                    b.dx = Math.sign(b.dx) * (Math.abs(b.dx) + 0.4);
-                    b.dy = Math.sign(b.dy) * (Math.abs(b.dy) + 0.4);
-                });
-            }
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (gameState !== 'playing') return;
-            
-            // 繪製直向球場底線
-            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2;
-            ctx.beginPath(); // 中場橫線
-            ctx.moveTo(0, canvas.height / 2);
-            ctx.lineTo(canvas.width, canvas.height / 2);
-            ctx.stroke();
-            ctx.beginPath(); // 中圈
-            ctx.arc(canvas.width/2, canvas.height/2, 50, 0, Math.PI*2); 
-            ctx.stroke();
-
-            // 繪製金探子
-            ctx.beginPath(); ctx.arc(snitch.x, snitch.y, snitch.radius, 0, Math.PI*2);
-            ctx.fillStyle = snitch.color;
-            ctx.shadowBlur = 15; ctx.shadowColor = '#f1c40f'; ctx.fill(); ctx.shadowBlur = 0;
-
-            // 繪製搏格
-            bludgers.forEach(b => {
-                ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
-                ctx.fillStyle = b.color; ctx.fill();
-            });
-
-            // 繪製搜捕手
-            ctx.beginPath(); ctx.arc(seeker.x, seeker.y, seeker.radius, 0, Math.PI*2);
-            ctx.fillStyle = seeker.isStunned ? '#95a5a6' : seeker.color; ctx.fill();
-            ctx.lineWidth = 3; ctx.strokeStyle = '#f1c40f'; ctx.stroke();
-
-            if (seeker.isStunned) {
-                ctx.fillStyle = 'white'; ctx.font = '16px Arial';
-                ctx.fillText('😵', seeker.x - 10, seeker.y - 18);
-            }
-        }
-
-        function loop() { update(); draw(); requestAnimationFrame(loop); }
-        loop();
-    </script>
 </body>
 </html>
